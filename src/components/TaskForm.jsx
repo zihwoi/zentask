@@ -1,29 +1,63 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { db } from "../firebase/config";
+import { collection, addDoc, updateDoc, doc } from "firebase/firestore";
 
-const TaskForm = ({ addTask }) => {
-  const [task, setTask] = useState("");
+const TaskForm = ({ addTask, editTask, editingTask }) => {
+    const [task, setTask] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!task.trim()) return;
-    addTask(task);
-    setTask(""); // Clear input after submission
-  };
+    useEffect(() => {
+        if (editingTask) {
+            setTask(editingTask.text);
+        }
+    }, [editingTask]);
 
-  return (
-    <form onSubmit={handleSubmit} className="p-4 bg-gray-100 dark:bg-gray-800 rounded">
-      <input
-        type="text"
-        placeholder="Enter a new task..."
-        value={task}
-        onChange={(e) => setTask(e.target.value)}
-        className="p-2 w-full border rounded dark:bg-gray-700 dark:text-white"
-      />
-      <button type="submit" className="mt-2 w-full bg-blue-500 text-white p-2 rounded">
-        Add Task
-      </button>
-    </form>
-  );
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (task.trim() === "") return;
+
+        try {
+            if (editingTask) {
+
+                await updateDoc(doc(db, "tasks", editingTask.id), { text: task });
+                editTask(null); // Exit edit mode
+            } else {
+
+                const docRef = await addDoc(collection(db, "tasks"), {
+                    text: task,
+                    createdAt: new Date(),
+                });
+
+                addTask({ id: docRef.id, text: task });
+            }
+
+            setTask("");
+        } catch (error) {
+            console.error("Error adding/updating task:", error);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="flex gap-3">
+            <input
+                type="text"
+                placeholder="New Task..."
+                value={task}
+                onChange={(e) => setTask(e.target.value)}
+                className="w-full p-3 border rounded-lg text-gray-900 
+                   bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500
+                   dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 
+                   dark:focus:ring-blue-400"
+            />
+            <button
+                type="submit"
+                className="px-4 py-2 text-white bg-blue-600 rounded-lg 
+                   hover:bg-blue-700 transition-all dark:bg-blue-500 
+                   dark:hover:bg-blue-400"
+            >
+                Add
+            </button>
+        </form>
+    );
 };
 
 export default TaskForm;
